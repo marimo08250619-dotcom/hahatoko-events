@@ -256,4 +256,112 @@ async function openEdit(id) {
   }
 }
 
-function
+function fillForm(ev) {
+  document.getElementById('fEyebrow').value = ev.eyebrow || '';
+  document.getElementById('fTitle').value = ev.title || '';
+  document.getElementById('fIntro').value = ev.intro || '';
+  document.getElementById('fDateLine').value = ev.dateLine || '';
+  document.getElementById('fVenueLine').value = ev.venueLine || '';
+  document.getElementById('fTimeslots').value = (ev.timeslots || []).join('\n');
+  document.getElementById('fMenuOptions').value = (ev.menuOptions || []).join('\n');
+  document.getElementById('fSuccessTitle').value = ev.successTitle || '';
+  document.getElementById('fSuccessText').value = ev.successText || '';
+  document.getElementById('fPublished').checked = !!ev.published;
+}
+
+document.getElementById('cancelEditBtn').onclick = () => { renderEventList(); switchTab('events'); showScreen('mainScreen'); };
+
+document.getElementById('saveEventBtn').onclick = async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { alert('イベント名を入力してください'); return; }
+  const timeslots = document.getElementById('fTimeslots').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (timeslots.length === 0) { alert('時間帯の選択肢は最低1つ必要です'); return; }
+  const menuOptions = document.getElementById('fMenuOptions').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const payload = {
+    id: editingEventId || undefined,
+    eyebrow: document.getElementById('fEyebrow').value.trim(),
+    title,
+    intro: document.getElementById('fIntro').value,
+    dateLine: document.getElementById('fDateLine').value.trim(),
+    venueLine: document.getElementById('fVenueLine').value.trim(),
+    timeslots,
+    menuOptions,
+    successTitle: document.getElementById('fSuccessTitle').value.trim(),
+    successText: document.getElementById('fSuccessText').value,
+    published: document.getElementById('fPublished').checked
+  };
+
+  const res = await fetch('/api/events', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+  if (!res.ok) { alert('保存に失敗しました'); return; }
+
+  const note = document.getElementById('saveNote');
+  note.style.display = 'block';
+  setTimeout(async () => {
+    note.style.display = 'none';
+    await renderEventList();
+    switchTab('events');
+    showScreen('mainScreen');
+  }, 600);
+};
+
+async function renderEntryEventSelect() {
+  const events = await loadAllEvents();
+  const sel = document.getElementById('entryEventSelect');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  events.forEach(ev => {
+    const opt = document.createElement('option');
+    opt.value = ev.id;
+    opt.textContent = ev.title + '(' + ev.dateLine + ')';
+    sel.appendChild(opt);
+  });
+  if (prev && events.some(e => e.id === prev)) sel.value = prev;
+  sel.onchange = renderEntryTable;
+  await renderEntryTable();
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+async function renderEntryTable() {
+  const sel = document.getElementById('entryEventSelect');
+  const eventId = sel.value;
+  if (!eventId) { document.getElementById('adminTbody').innerHTML = ''; document.getElementById('adminCount').textContent = ''; return; }
+  const res = await fetch('/api/entries?eventId=' + encodeURIComponent(eventId), { headers: { 'X-Admin-Passcode': PASSCODE } });
+  const entries = await res.json();
+  document.getElementById('adminCount').textContent = `合計 ${entries.length} 件`;
+  const tbody = document.getElementById('adminTbody');
+  tbody.innerHTML = '';
+  entries.slice().sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)).forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(entry.name)}</td>
+      <td>${escapeHtml(entry.contact)}</td>
+      <td>${escapeHtml(entry.timeslot)}</td>
+      <td>${escapeHtml(entry.menu || '-')}</td>
+      <td>${escapeHtml(entry.note || '-')}</td>
+      <td>${fmtDate(entry.submittedAt)}</td>
+      <td>
+        <select class="status" data-id="${entry.id}">
+          <option value="未確認" ${entry.status==='未確認'?'selected':''}>未確認</option>
+          <option value="確認済み" ${entry.status==='確認済み'?'selected':''}>確認済み</option>
+          <option value="リマインド送信済み" ${entry.status==='リマインド送信済み'?'selected':''}>リマインド済み</option>
+          <option value="当日完了" ${entry.status==='当日完了'?'selected':''}>当日完了</option>
+          <option value="キャンセル" ${entry.status==='キャンセル'?'selected':''}>キャンセル</option>
+        </select>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('select.status').forEach(sel2 => {
+    sel2.addEventListener('change', async (e) => {
+      await fetch('/api/entries', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ id: e.target.getAttribute('data-id'), status: e.target.value }) });
+    });
+  });
+}
+</script>
+</body>
+</html>
