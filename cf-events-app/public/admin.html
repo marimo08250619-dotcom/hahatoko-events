@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>イベント管理画面</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+  :root { --cream:#FAF6F0; --cream-2:#F7F3ED; --terracotta:#C1694F; --terracotta-dark:#B5622E; --sage:#7A9E87; --sage-dark:#5A8060; --ink:#4A4038; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:'Zen Kaku Gothic New',sans-serif; color-scheme:light; padding:24px 16px 60px; }
+  .wrap { max-width:640px; margin:0 auto; }
+  h1 { font-family:'Shippori Mincho',serif; font-size:22px; margin:0 0 16px; }
+  h2 { font-family:'Shippori Mincho',serif; font-size:19px; margin:0 0 10px; }
+  .card { background:#fff; border-radius:18px; padding:26px 22px; box-shadow:0 4px 20px rgba(193,105,79,.08); border:1px solid #EFE6DA; margin-bottom:16px; }
+  label { display:block; font-size:13px; font-weight:500; margin:18px 0 6px; }
+  label:first-child { margin-top:0; }
+  .req { color:var(--terracotta); margin-left:4px; }
+  input[type=text], textarea, select { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-family:inherit; font-size:15px; color:var(--ink); }
+  textarea { resize:vertical; min-height:70px; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--sage); background:#fff; }
+  .pass-box { display:flex; gap:8px; margin-top:14px; }
+  .pass-box input { flex:1; }
+  .primary-btn, .save-btn, .pass-box button { padding:12px 18px; border:none; border-radius:10px; background:var(--terracotta); color:#fff; font-weight:700; cursor:pointer; }
+  .save-btn { background:var(--sage); }
+  .back-link { font-size:12px; color:#b6a998; text-decoration:underline; background:none; border:none; cursor:pointer; margin-top:14px; }
+  .tabs { display:flex; gap:8px; margin-bottom:18px; }
+  .tab-btn { flex:1; padding:10px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-size:13px; font-weight:500; cursor:pointer; color:var(--ink); }
+  .tab-btn.active { background:var(--terracotta); color:#fff; border-color:var(--terracotta); }
+  .admin-section { display:none; }
+  .admin-section.active { display:block; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+  .event-row { display:flex; flex-direction:column; padding:14px; border:1px solid #EFE6DA; border-radius:12px; margin-bottom:10px; background:var(--cream-2); }
+  .event-row .name { font-weight:700; font-size:14px; }
+  .event-row .meta { font-size:12px; color:#8a7c6c; margin-top:3px; }
+  .badge { font-size:11px; padding:3px 9px; border-radius:20px; font-weight:500; margin-left:6px; }
+  .badge.published { background:#E4EEE6; color:var(--sage-dark); }
+  .badge.hidden { background:#F0E7DA; color:#8a7c6c; }
+  .row-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .small-btn { font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #E3D8C8; background:#fff; cursor:pointer; color:var(--ink); }
+  .small-btn.danger { color:var(--terracotta-dark); border-color:var(--terracotta); }
+  .link-box { display:flex; gap:6px; margin-top:8px; }
+  .link-box input { flex:1; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; background:#fff; border-radius:10px; overflow:hidden; }
+  th, td { padding:9px 8px; border-bottom:1px solid #F0E7DA; text-align:left; vertical-align:top; }
+  th { background:var(--cream-2); font-weight:500; color:var(--terracotta-dark); }
+  select.status { padding:5px 6px; border-radius:6px; border:1px solid #E3D8C8; font-size:12px; background:var(--cream-2); }
+  .admin-count { font-size:13px; margin:10px 0; color:#6b5f54; }
+  .save-note { font-size:12px; color:var(--sage-dark); margin-top:10px; display:none; }
+  .settings-hint { font-size:12px; color:#b6a998; margin:4px 0 2px; }
+  .toggle-row { display:flex; align-items:center; gap:8px; margin:18px 0 6px; }
+  .toggle-row input { width:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="gateScreen" class="screen active">
+    <div class="card">
+      <h1>イベント管理画面</h1>
+      <label>パスコード</label>
+      <div class="pass-box">
+        <input type="text" id="passInput" placeholder="パスコードを入力">
+        <button id="passBtn">開く</button>
+      </div>
+      <div class="error-msg" id="gateError" style="color:var(--terracotta-dark);font-size:13px;margin-top:8px;display:none;">パスコードが違います</div>
+    </div>
+  </div>
+
+  <div id="mainScreen" class="screen">
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" id="tabEventsBtn">イベント管理</button>
+        <button class="tab-btn" id="tabEntriesBtn">申込一覧</button>
+      </div>
+
+      <div class="admin-section active" id="eventsSection">
+        <button class="primary-btn" id="newEventBtn">＋ 新しいイベントを追加</button>
+        <div id="eventListWrap" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="admin-section" id="entriesSection">
+        <label>イベントを選択</label>
+        <select id="entryEventSelect"></select>
+        <div class="admin-count" id="adminCount"></div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>お名前</th><th>連絡先</th><th>時間帯</th><th>相談内容</th><th>受付日時</th><th>状況</th></tr></thead>
+            <tbody id="adminTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="editScreen" class="screen">
+    <div class="card">
+      <h2 id="editHeading">イベントを編集</h2>
+      <label>上部の小見出し</label>
+      <input type="text" id="fEyebrow">
+      <label>イベント名<span class="req">必須</span></label>
+      <input type="text" id="fTitle">
+      <label>紹介文(改行OK)</label>
+      <textarea id="fIntro"></textarea>
+      <label>日程表示</label>
+      <input type="text" id="fDateLine">
+      <label>会場表示</label>
+      <input type="text" id="fVenueLine">
+      <label>時間帯の選択肢(1行に1つ)</label>
+      <div class="settings-hint">行の順番=表示順です。</div>
+      <textarea id="fTimeslots" style="min-height:100px;"></textarea>
+      <label>送信後：お礼メッセージのタイトル</label>
+      <input type="text" id="fSuccessTitle">
+      <label>送信後：お礼メッセージの本文(改行OK)</label>
+      <textarea id="fSuccessText"></textarea>
+      <div class="toggle-row">
+        <input type="checkbox" id="fPublished">
+        <label style="margin:0;">公開する(お客様の一覧に表示)</label>
+      </div>
+      <button class="save-btn" id="saveEventBtn" style="margin-top:16px;">保存する</button>
+      <button class="back-link" id="cancelEditBtn">キャンセルして戻る</button>
+      <div class="save-note" id="saveNote">保存しました。</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let PASSCODE = '';
+let editingEventId = null;
+
+const screens = ['gateScreen','mainScreen','editScreen']
+  .reduce((acc, id) => { acc[id] = document.getElementById(id); return acc; }, {});
+function showScreen(id) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[id].classList.add('active');
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Admin-Passcode': PASSCODE };
+}
+
+document.getElementById('passBtn').onclick = async () => {
+  const val = document.getElementById('passInput').value;
+  const res = await fetch('/api/events', { headers: { 'X-Admin-Passcode': val } });
+  if (res.status === 401) {
+    document.getElementById('gateError').style.display = 'block';
+    return;
+  }
+  PASSCODE = val;
+  await renderEventList();
+  await renderEntryEventSelect();
+  switchTab('events');
+  showScreen('mainScreen');
+};
+
+function switchTab(which) {
+  const evBtn = document.getElementById('tabEventsBtn');
+  const enBtn = document.getElementById('tabEntriesBtn');
+  const evSec = document.getElementById('eventsSection');
+  const enSec = document.getElementById('entriesSection');
+  if (which === 'events') {
+    evBtn.classList.add('active'); enBtn.classList.remove('active');
+    evSec.classList.add('active'); enSec.classList.remove('active');
+  } else {
+    enBtn.classList.add('active'); evBtn.classList.remove('active');
+    enSec.classList.add('active'); evSec.classList.remove('active');
+  }
+}
+document.getElementById('tabEventsBtn').onclick = () => switchTab('events');
+document.getElementById('tabEntriesBtn').onclick = async () => { await renderEntryEventSelect(); switchTab('entries'); };
+
+async function loadAllEvents() {
+  const res = await fetch('/api/events', { headers: { 'X-Admin-Passcode': PASSCODE } });
+  return res.json();
+}
+
+async function renderEventList() {
+  const events = await loadAllEvents();
+  const wrap = document.getElementById('eventListWrap');
+  wrap.innerHTML = '';
+  if (events.length === 0) {
+    wrap.innerHTML = '<div style="color:#8a7c6c;font-size:13px;">まだイベントがありません。上のボタンから作成してください。</div>';
+    return;
+  }
+  events.forEach(ev => {
+    const row = document.createElement('div');
+    row.className = 'event-row';
+    row.innerHTML = `
+      <div class="name">${escapeHtml(ev.title)}<span class="badge ${ev.published?'published':'hidden'}">${ev.published?'公開中':'非公開'}</span></div>
+      <div class="meta">${escapeHtml(ev.dateLine)}</div>
+      <div class="row-actions">
+        <button class="small-btn" data-act="edit" data-id="${ev.id}">編集</button>
+        <button class="small-btn" data-act="link" data-id="${ev.id}">リンク取得</button>
+        <button class="small-btn danger" data-act="delete" data-id="${ev.id}">削除</button>
+      </div>
+      <div class="link-box" id="linkbox-${ev.id}" style="display:none;">
+        <input type="text" readonly id="linkinput-${ev.id}">
+        <button class="small-btn" data-act="copylink" data-id="${ev.id}">コピー</button>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+
+  wrap.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      const act = btn.getAttribute('data-act');
+      if (act === 'edit') {
+        openEdit(id);
+      } else if (act === 'delete') {
+        if (confirm('このイベントを削除しますか？申込データは残ります。')) {
+          await fetch('/api/events?id=' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
+          renderEventList();
+        }
+      } else if (act === 'link') {
+        const box = document.getElementById('linkbox-' + id);
+        const input = document.getElementById('linkinput-' + id);
+        input.value = window.location.origin + '/?event=' + encodeURIComponent(id);
+        box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+      } else if (act === 'copylink') {
+        const input = document.getElementById('linkinput-' + id);
+        input.select();
+        try { await navigator.clipboard.writeText(input.value); alert('コピーしました'); }
+        catch (e) { alert('手動で選択してコピーしてください'); }
+      }
+    });
+  });
+}
+
+document.getElementById('newEventBtn').onclick = () => openEdit(null);
+
+async function openEdit(id) {
+  editingEventId = id;
+  document.getElementById('editHeading').textContent = id ? 'イベントを編集' : '新しいイベントを追加';
+  showScreen('editScreen');
+  if (id) {
+    const events = await loadAllEvents();
+    fillForm(events.find(e => e.id === id) || {});
+  } else {
+    fillForm({
+      eyebrow: '出張施術会 お申し込み', title: '', intro: '', dateLine: '', venueLine: '',
+      timeslots: ['午前(10:00-12:00)', '午後(13:00-16:00)'],
+      successTitle: 'お申し込みありがとうございます',
+      successText: '内容を確認のうえ、ご連絡先へ折り返しご連絡いたします。',
+      published: false
+    });
+  }
+}
+
+function fillForm(ev) {
+  document.getElementById('fEyebrow').value = ev.eyebrow || '';
+  document.getElementById('fTitle').value = ev.title || '';
+  document.getElementById('fIntro').value = ev.intro || '';
+  document.getElementById('fDateLine').value = ev.dateLine || '';
+  document.getElementById('fVenueLine').value = ev.venueLine || '';
+  document.getElementById('fTimeslots').value = (ev.timeslots || []).join('\n');
+  document.getElementById('fSuccessTitle').value = ev.successTitle || '';
+  document.getElementById('fSuccessText').value = ev.successText || '';
+  document.getElementById('fPublished').checked = !!ev.published;
+}
+
+document.getElementById('cancelEditBtn').onclick = () => { renderEventList(); switchTab('events'); showScreen('mainScreen'); };
+
+document.getElementById('saveEventBtn').onclick = async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { alert('イベント名を入力してください'); return; }
+  const timeslots = document.getElementById('fTimeslots').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (timeslots.length === 0) { alert('時間帯の選択肢は最低1つ必要です'); return; }
+
+  const payload = {
+    id: editingEventId || undefined,
+    eyebrow: document.getElementById('fEyebrow').value.trim(),
+    title,
+    intro: document.getElementById('fIntro').value,
+    dateLine: document.getElementById('fDateLine').value.trim(),
+    venueLine: document.getElementById('fVenueLine').value.trim(),
+    timeslots,
+    successTitle: document.getElementById('fSuccessTitle').value.trim(),
+    successText: document.getElementById('fSuccessText').value,
+    published: document.getElementById('fPublished').checked
+  };
+
+  const res = await fetch('/api/events', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+  if (!res.ok) { alert('保存に失敗しました'); return; }
+
+  const note = document.getElementById('saveNote');
+  note.style.display = 'block';
+  setTimeout(async () => {
+    note.style.display = 'none';
+    await renderEventList();
+    switchTab('events');
+    showScreen('mainScreen');
+  }, 600);
+};
+
+async function renderEntryEventSelect() {
+  const events = await loadAllEvents();
+  const sel = document.getElementById('entryEventSelect');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  events.forEach(ev => {
+    const opt = document.createElement('option');
+    opt.value = ev.id;
+    opt.textContent = ev.title + '(' + ev.dateLine + ')';
+    sel.appendChild(opt);
+  });
+  if (prev && events.some(e => e.id === prev)) sel.value = prev;
+  sel.onchange = renderEntryTable;
+  await renderEntryTable();
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+async function renderEntryTable() {
+  const sel = document.getElementById('entryEventSelect');
+  const eventId = sel.value;
+  if (!eventId) { document.getElementById('adminTbody').innerHTML = ''; document.getElementById('adminCount').textContent = ''; return; }
+  const res = await fetch('/api/entries?eventId=' + encodeURIComponent(eventId), { headers: { 'X-Admin-Passcode': PASSCODE } });
+  const entries = await res.json();
+  document.getElementById('adminCount').textContent = `合計 ${entries.length} 件`;
+  const tbody = document.getElementById('adminTbody');
+  tbody.innerHTML = '';
+  entries.slice().sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)).forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(entry.name)}</td>
+      <td>${escapeHtml(entry.contact)}</td>
+      <td>${escapeHtml(entry.timeslot)}</td>
+      <td>${escapeHtml(entry.note || '-')}</td>
+      <td>${fmtDate(entry.submittedAt)}</td>
+      <td>
+        <select class="status" data-id="${entry.id}">
+          <option value="未確認" ${entry.status==='未確認'?'selected':''}>未確認</option>
+          <option value="確認済み" ${entry.status==='確認済み'?'selected':''}>確認済み</option>
+          <option value="リマインド送信済み" ${entry.status==='リマインド送信済み'?'selected':''}>リマインド済み</option>
+          <option value="当日完了" ${entry.status==='当日完了'?'selected':''}>当日完了</option>
+          <option value="キャンセル" ${entry.status==='キャンセル'?'selected':''}>キャンセル</option>
+        </select>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('select.status').forEach(sel2 => {
+    sel2.addEventListener('change', async (e) => {
+      await fetch('/api/entries', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ id: e.target.getAttribute('data-id'), status: e.target.value }) });
+    });
+  });
+}
+</script>
+</body>
+</html>

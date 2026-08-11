@@ -1,0 +1,9 @@
+{
+  "name": "hahatoko-events",
+  "compatibility_date": "2025-01-01",
+  "main": "worker/index.js",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
+}
