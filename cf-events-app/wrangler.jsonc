@@ -5,5 +5,11 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "EVENTS_KV",
+      "id": "513ecd743e564b40b41d6fe520064ebd"
+    }
+  ]
 }
