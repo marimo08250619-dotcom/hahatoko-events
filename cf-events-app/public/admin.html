@@ -150,7 +150,7 @@ function authHeaders() {
 
 document.getElementById('passBtn').onclick = async () => {
   const val = document.getElementById('passInput').value;
-  const res = await fetch('/api/events', { headers: { 'X-Admin-Passcode': val } });
+  const res = await fetch('/api/admin-check', { headers: { 'X-Admin-Passcode': val } });
   if (res.status === 401) {
     document.getElementById('gateError').style.display = 'block';
     return;
