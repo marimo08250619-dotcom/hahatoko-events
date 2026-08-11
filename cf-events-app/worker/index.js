@@ -1,4 +1,4 @@
-const PUBLIC_FIELDS = ['id','eyebrow','title','intro','dateLine','venueLine','timeslots','successTitle','successText'];
+const PUBLIC_FIELDS = ['id','eyebrow','title','intro','dateLine','venueLine','timeslots','menuOptions','successTitle','successText'];
 
 function isAdmin(request, env) {
   const passcode = request.headers.get('X-Admin-Passcode');
@@ -69,6 +69,7 @@ async function handleEntries(request, env) {
       name: String(body.name).slice(0, 200),
       contact: String(body.contact).slice(0, 200),
       timeslot: String(body.timeslot).slice(0, 200),
+      menu: String(body.menu || '').slice(0, 200),
       note: String(body.note || '').slice(0, 2000),
       status: '未確認',
       submittedAt: new Date().toISOString()
