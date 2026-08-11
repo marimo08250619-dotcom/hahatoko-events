@@ -74,6 +74,10 @@
         <input type="text" id="contact" required placeholder="例）090-xxxx-xxxx">
         <label>ご希望の時間帯<span class="req">必須</span></label>
         <div class="time-options" id="timeOptionsEl"></div>
+        <div id="menuFieldWrap" style="display:none;">
+          <label>ご希望メニュー<span class="req">必須</span></label>
+          <div class="time-options" id="menuOptionsEl"></div>
+        </div>
         <label>ご相談内容・お身体の気になる点(任意)</label>
         <textarea id="note" placeholder="例）産後の骨盤まわり、古傷のケアについて相談したい　など"></textarea>
         <button type="submit" class="submit" id="submitBtn">申し込む</button>
@@ -152,6 +156,22 @@ function openForm(ev) {
     container.appendChild(wrap);
   });
 
+  const menuWrap = document.getElementById('menuFieldWrap');
+  const menuContainer = document.getElementById('menuOptionsEl');
+  menuContainer.innerHTML = '';
+  const menuOptions = ev.menuOptions || [];
+  if (menuOptions.length > 0) {
+    menuWrap.style.display = 'block';
+    menuOptions.forEach((label, idx) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'time-option';
+      wrap.innerHTML = `<input type="radio" name="menu" value="${escapeHtml(label)}" ${idx===0?'required':''}>${escapeHtml(label)}`;
+      menuContainer.appendChild(wrap);
+    });
+  } else {
+    menuWrap.style.display = 'none';
+  }
+
   document.getElementById('entryForm').reset();
   showScreen('formScreen');
 }
@@ -171,12 +191,14 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
   const note = document.getElementById('note').value.trim();
   const timeslotEl = document.querySelector('input[name=timeslot]:checked');
   const timeslot = timeslotEl ? timeslotEl.value : '';
+  const menuEl = document.querySelector('input[name=menu]:checked');
+  const menu = menuEl ? menuEl.value : '';
 
   try {
     const res = await fetch('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId: currentEvent.id, name, contact, timeslot, note })
+      body: JSON.stringify({ eventId: currentEvent.id, name, contact, timeslot, menu, note })
     });
     if (!res.ok) throw new Error('submit failed');
 
