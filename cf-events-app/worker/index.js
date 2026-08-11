@@ -105,8 +105,13 @@ async function handleEntries(request, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/admin-check') {
+      if (!isAdmin(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+      return json({ ok: true });
+    }
     if (url.pathname === '/api/events') return handleEvents(request, env);
     if (url.pathname === '/api/entries') return handleEntries(request, env);
     return env.ASSETS.fetch(request);
   }
+};
 };
