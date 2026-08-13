@@ -8,6 +8,33 @@ function json(data, init) {
   return new Response(JSON.stringify(data), Object.assign({ headers: { 'Content-Type': 'application/json' } }, init));
 }
 
+async function notifyLine(env, entry, eventTitle) {
+  if (!env.LINE_CHANNEL_ACCESS_TOKEN || !env.LINE_NOTIFY_USER_ID) return;
+  const text =
+    `【新規予約】${eventTitle}\n` +
+    `お名前: ${entry.name}\n` +
+    `連絡先: ${entry.contact}\n` +
+    `時間帯: ${entry.timeslot}\n` +
+    (entry.menu ? `メニュー: ${entry.menu}\n` : '') +
+    (entry.note ? `相談内容: ${entry.note}\n` : '') +
+    `管理画面で確認してください。`;
+  try {
+    await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN
+      },
+      body: JSON.stringify({
+        to: env.LINE_NOTIFY_USER_ID,
+        messages: [{ type: 'text', text }]
+      })
+    });
+  } catch (e) {
+    console.error('LINE notify failed', e);
+  }
+}
+
 async function handleEvents(request, env) {
   const url = new URL(request.url);
 
@@ -53,6 +80,18 @@ async function handleEvents(request, env) {
   return json({ error: 'method not allowed' }, { status: 405 });
 }
 
+async function handleAvailability(request, env) {
+  const url = new URL(request.url);
+  const eventId = url.searchParams.get('eventId');
+  if (!eventId) return json({ error: 'eventId is required' }, { status: 400 });
+  const raw = await env.EVENTS_KV.get('entries');
+  const entries = raw ? JSON.parse(raw) : [];
+  const takenTimeslots = entries
+    .filter(e => e.eventId === eventId && e.status !== 'キャンセル')
+    .map(e => e.timeslot);
+  return json({ takenTimeslots });
+}
+
 async function handleEntries(request, env) {
   const url = new URL(request.url);
 
@@ -63,7 +102,17 @@ async function handleEntries(request, env) {
     }
     const raw = await env.EVENTS_KV.get('entries');
     const entries = raw ? JSON.parse(raw) : [];
-    entries.push({
+
+    const conflict = entries.some(e =>
+      e.eventId === body.eventId &&
+      e.timeslot === body.timeslot &&
+      e.status !== 'キャンセル'
+    );
+    if (conflict) {
+      return json({ error: 'timeslot already taken' }, { status: 409 });
+    }
+
+    const newEntry = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       eventId: body.eventId,
       name: String(body.name).slice(0, 200),
@@ -73,8 +122,15 @@ async function handleEntries(request, env) {
       note: String(body.note || '').slice(0, 2000),
       status: '未確認',
       submittedAt: new Date().toISOString()
-    });
+    };
+    entries.push(newEntry);
     await env.EVENTS_KV.put('entries', JSON.stringify(entries));
+
+    const eventsRaw = await env.EVENTS_KV.get('events');
+    const eventsList = eventsRaw ? JSON.parse(eventsRaw) : [];
+    const ev = eventsList.find(e => e.id === body.eventId);
+    await notifyLine(env, newEntry, ev ? ev.title : '(イベント名不明)');
+
     return json({ ok: true });
   }
 
@@ -110,6 +166,7 @@ export default {
       return json({ ok: true });
     }
     if (url.pathname === '/api/events') return handleEvents(request, env);
+    if (url.pathname === '/api/availability') return handleAvailability(request, env);
     if (url.pathname === '/api/entries') return handleEntries(request, env);
     return env.ASSETS.fetch(request);
   }
