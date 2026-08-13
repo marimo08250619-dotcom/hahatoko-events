@@ -28,6 +28,8 @@
   input:focus, textarea:focus { outline:none; border-color:var(--sage); background:#fff; }
   .time-options { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
   .time-option { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-size:14px; cursor:pointer; }
+  .time-option.taken { opacity:.5; cursor:not-allowed; }
+  .time-option .taken-label { margin-left:auto; font-size:12px; color:var(--terracotta-dark); }
   .time-option input { width:auto; }
   button.submit { width:100%; margin-top:26px; padding:14px; border:none; border-radius:12px; background:var(--terracotta); color:#fff; font-size:15px; font-weight:700; letter-spacing:.05em; cursor:pointer; }
   button.submit:disabled { background:#D9C9BE; cursor:not-allowed; }
@@ -35,6 +37,7 @@
   .success .mark { font-size:40px; color:var(--sage-dark); margin-bottom:10px; }
   .success h2 { font-family:'M PLUS Rounded 1c',sans-serif; font-size:20px; margin:4px 0 10px; }
   .success p { font-size:14px; color:#6b5f54; line-height:1.8; white-space:pre-line; }
+  .line-btn { display:inline-block; margin-top:24px; padding:14px 28px; border-radius:12px; background:#06C755; color:#fff; font-size:15px; font-weight:700; text-decoration:none; }
   .error-msg { color:var(--terracotta-dark); font-size:13px; margin-top:8px; display:none; }
   .back-link { font-size:12px; color:#b6a998; text-decoration:underline; background:none; border:none; cursor:pointer; margin-top:14px; }
   .picker-item { display:block; width:100%; text-align:left; padding:16px; border-radius:12px; border:1px solid #EFE6DA; background:var(--cream-2); margin-bottom:10px; cursor:pointer; }
@@ -91,6 +94,9 @@
     <div class="mark">✓</div>
     <h2 id="successTitleEl"></h2>
     <p id="successTextEl"></p>
+    <a href="https://lin.ee/uvEFu3u" target="_blank" rel="noopener" class="line-btn">
+      公式LINEでカルテを記入する
+    </a>
   </div>
 
 </div>
@@ -139,7 +145,7 @@ async function renderPicker() {
   }
 }
 
-function openForm(ev) {
+async function openForm(ev) {
   currentEvent = ev;
   document.getElementById('eyebrowEl').textContent = ev.eyebrow;
   document.getElementById('titleEl').textContent = ev.title;
@@ -147,12 +153,20 @@ function openForm(ev) {
   document.getElementById('dateLineEl').textContent = ev.dateLine;
   document.getElementById('venueLineEl').textContent = ev.venueLine;
 
+  let takenTimeslots = [];
+  try {
+    const res = await fetch('/api/availability?eventId=' + encodeURIComponent(ev.id));
+    const data = await res.json();
+    takenTimeslots = data.takenTimeslots || [];
+  } catch (e) { /* 取得に失敗しても申込み自体は続行できるようにする */ }
+
   const container = document.getElementById('timeOptionsEl');
   container.innerHTML = '';
   ev.timeslots.forEach((label, idx) => {
+    const isTaken = takenTimeslots.includes(label);
     const wrap = document.createElement('label');
-    wrap.className = 'time-option';
-    wrap.innerHTML = `<input type="radio" name="timeslot" value="${escapeHtml(label)}" ${idx===0?'required':''}>${escapeHtml(label)}`;
+    wrap.className = 'time-option' + (isTaken ? ' taken' : '');
+    wrap.innerHTML = `<input type="radio" name="timeslot" value="${escapeHtml(label)}" ${idx===0 && !isTaken?'required':''} ${isTaken?'disabled':''}>${escapeHtml(label)}${isTaken?'<span class="taken-label">満員</span>':''}`;
     container.appendChild(wrap);
   });
 
@@ -200,6 +214,14 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventId: currentEvent.id, name, contact, timeslot, menu, note })
     });
+    if (res.status === 409) {
+      errorMsg.textContent = 'その時間帯は直前に埋まってしまいました。お手数ですが別の時間帯をお選びください。';
+      errorMsg.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '申し込む';
+      openForm(currentEvent);
+      return;
+    }
     if (!res.ok) throw new Error('submit failed');
 
     document.getElementById('successTitleEl').textContent = currentEvent.successTitle;
