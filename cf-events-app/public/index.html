@@ -201,7 +201,11 @@ async function openForm(ev) {
   showScreen('formScreen');
 }
 
-document.getElementById('backToPickerBtn').onclick = () => { renderPicker(); showScreen('pickerScreen'); };
+document.getElementById('backToPickerBtn').onclick = () => {
+  window.history.replaceState({}, '', window.location.pathname);
+  renderPicker();
+  showScreen('pickerScreen');
+};
 
 document.getElementById('entryForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -246,7 +250,23 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
   }
 });
 
-renderPicker();
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const targetEventId = params.get('event');
+  if (targetEventId) {
+    try {
+      const events = await loadPublicEvents();
+      const ev = events.find(e => e.id === targetEventId);
+      if (ev) {
+        openForm(ev);
+        return;
+      }
+    } catch (e) { /* 取得に失敗したら通常の一覧表示にフォールバック */ }
+  }
+  renderPicker();
+}
+
+init();
 </script>
 </body>
 </html>
