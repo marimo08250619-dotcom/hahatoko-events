@@ -150,7 +150,21 @@ async function handleEntries(request, env) {
     let entries = raw ? JSON.parse(raw) : [];
     const idx = entries.findIndex(e => e.id === body.id);
     if (idx === -1) return json({ error: 'not found' }, { status: 404 });
-    entries[idx].status = body.status;
+
+    if (body.status !== undefined) entries[idx].status = body.status;
+
+    if (body.timeslot !== undefined && body.timeslot !== entries[idx].timeslot) {
+      const conflict = entries.some(e =>
+        e.id !== body.id &&
+        e.eventId === entries[idx].eventId &&
+        e.timeslot === body.timeslot &&
+        e.status !== 'キャンセル'
+      );
+      if (conflict) return json({ error: 'timeslot already taken' }, { status: 409 });
+      entries[idx].timeslot = body.timeslot;
+    }
+    if (body.menu !== undefined) entries[idx].menu = body.menu;
+
     await env.EVENTS_KV.put('entries', JSON.stringify(entries));
     return json({ ok: true });
   }
