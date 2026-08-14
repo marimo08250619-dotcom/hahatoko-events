@@ -155,6 +155,16 @@ async function handleEntries(request, env) {
     return json({ ok: true });
   }
 
+  if (request.method === 'DELETE') {
+    if (!isAdmin(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const id = url.searchParams.get('id');
+    const raw = await env.EVENTS_KV.get('entries');
+    let entries = raw ? JSON.parse(raw) : [];
+    entries = entries.filter(e => e.id !== id);
+    await env.EVENTS_KV.put('entries', JSON.stringify(entries));
+    return json({ ok: true });
+  }
+
   return json({ error: 'method not allowed' }, { status: 405 });
 }
 
@@ -171,4 +181,3 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-
