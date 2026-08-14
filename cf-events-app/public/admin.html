@@ -331,6 +331,9 @@ async function renderEntryTable() {
   const sel = document.getElementById('entryEventSelect');
   const eventId = sel.value;
   if (!eventId) { document.getElementById('adminTbody').innerHTML = ''; document.getElementById('adminCount').textContent = ''; return; }
+  const events = await loadAllEvents();
+  const currentEvent = events.find(e => e.id === eventId) || {};
+  const timeslotOptions = currentEvent.timeslots || [];
   const res = await fetch('/api/entries?eventId=' + encodeURIComponent(eventId), { headers: { 'X-Admin-Passcode': PASSCODE } });
   const entries = await res.json();
   document.getElementById('adminCount').textContent = `合計 ${entries.length} 件`;
@@ -338,10 +341,15 @@ async function renderEntryTable() {
   tbody.innerHTML = '';
   entries.slice().sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)).forEach(entry => {
     const tr = document.createElement('tr');
+    const timeslotOptionsHtml = timeslotOptions.map(t =>
+      `<option value="${escapeHtml(t)}" ${entry.timeslot===t?'selected':''}>${escapeHtml(t)}</option>`
+    ).join('') + (timeslotOptions.includes(entry.timeslot) ? '' : `<option value="${escapeHtml(entry.timeslot)}" selected>${escapeHtml(entry.timeslot)}(選択肢外)</option>`);
     tr.innerHTML = `
       <td>${escapeHtml(entry.name)}</td>
       <td>${escapeHtml(entry.contact)}</td>
-      <td>${escapeHtml(entry.timeslot)}</td>
+      <td>
+        <select class="status timeslot-edit" data-id="${entry.id}">${timeslotOptionsHtml}</select>
+      </td>
       <td>${escapeHtml(entry.menu || '-')}</td>
       <td>${escapeHtml(entry.note || '-')}</td>
       <td>${fmtDate(entry.submittedAt)}</td>
@@ -358,9 +366,21 @@ async function renderEntryTable() {
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('select.status').forEach(sel2 => {
+  tbody.querySelectorAll('select.status:not(.timeslot-edit)').forEach(sel2 => {
     sel2.addEventListener('change', async (e) => {
       await fetch('/api/entries', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ id: e.target.getAttribute('data-id'), status: e.target.value }) });
+    });
+  });
+  tbody.querySelectorAll('select.timeslot-edit').forEach(sel3 => {
+    sel3.addEventListener('change', async (e) => {
+      const res2 = await fetch('/api/entries', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ id: e.target.getAttribute('data-id'), timeslot: e.target.value }) });
+      if (res2.status === 409) {
+        alert('その時間帯は既に別の方の予約で埋まっています。別の時間帯を選んでください。');
+        renderEntryTable();
+        return;
+      }
+      if (!res2.ok) { alert('変更に失敗しました'); renderEntryTable(); return; }
+      renderEntryTable();
     });
   });
   tbody.querySelectorAll('.del-entry-btn').forEach(btn => {
