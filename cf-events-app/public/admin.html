@@ -51,6 +51,7 @@
   .settings-hint { font-size:12px; color:#b6a998; margin:4px 0 2px; }
   .toggle-row { display:flex; align-items:center; gap:8px; margin:18px 0 6px; }
   .toggle-row input { width:auto; }
+  .del-entry-btn { font-size:11px; padding:5px 8px; border-radius:6px; border:1px solid var(--terracotta); background:#fff; color:var(--terracotta-dark); cursor:pointer; }
 </style>
 </head>
 <body>
@@ -86,7 +87,7 @@
         <div class="admin-count" id="adminCount"></div>
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>お名前</th><th>連絡先</th><th>時間帯</th><th>メニュー</th><th>相談内容</th><th>受付日時</th><th>状況</th></tr></thead>
+            <thead><tr><th>お名前</th><th>連絡先</th><th>時間帯</th><th>メニュー</th><th>相談内容</th><th>受付日時</th><th>状況</th><th>削除</th></tr></thead>
             <tbody id="adminTbody"></tbody>
           </table>
         </div>
@@ -353,12 +354,23 @@ async function renderEntryTable() {
           <option value="キャンセル" ${entry.status==='キャンセル'?'selected':''}>キャンセル</option>
         </select>
       </td>
+      <td><button class="del-entry-btn" data-id="${entry.id}" data-name="${escapeHtml(entry.name)}">削除</button></td>
     `;
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('select.status').forEach(sel2 => {
     sel2.addEventListener('change', async (e) => {
       await fetch('/api/entries', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ id: e.target.getAttribute('data-id'), status: e.target.value }) });
+    });
+  });
+  tbody.querySelectorAll('.del-entry-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      const name = btn.getAttribute('data-name');
+      if (confirm(`「${name}」さんの申込みデータを削除しますか？この操作は取り消せません。`)) {
+        await fetch('/api/entries?id=' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
+        renderEntryTable();
+      }
     });
   });
 }
