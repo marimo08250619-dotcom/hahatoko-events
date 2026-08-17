@@ -1,4 +1,4 @@
-const PUBLIC_FIELDS = ['id','eyebrow','title','intro','dateLine','venueLine','timeslots','menuOptions','successTitle','successText'];
+const PUBLIC_FIELDS = ['id','eyebrow','title','intro','dateLine','venueLine','timeslots','menuOptions','successTitle','successText','needsLineCta'];
 
 function isAdmin(request, env) {
   const passcode = request.headers.get('X-Admin-Passcode');
