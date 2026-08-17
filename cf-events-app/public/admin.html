@@ -119,6 +119,10 @@
       <label>送信後：お礼メッセージの本文(改行OK)</label>
       <textarea id="fSuccessText"></textarea>
       <div class="toggle-row">
+        <input type="checkbox" id="fNeedsLineCta">
+        <label style="margin:0;">公式LINE誘導・カルテ案内を表示する(施術系イベント用。ワークショップ系はオフ推奨)</label>
+      </div>
+      <div class="toggle-row">
         <input type="checkbox" id="fPublished">
         <label style="margin:0;">公開する(お客様の一覧に表示)</label>
       </div>
@@ -252,6 +256,7 @@ async function openEdit(id) {
       timeslots: ['午前(10:00-12:00)', '午後(13:00-16:00)'],
       successTitle: 'お申し込みありがとうございます',
       successText: '内容を確認のうえ、ご連絡先へ折り返しご連絡いたします。',
+      needsLineCta: false,
       published: false
     });
   }
@@ -267,6 +272,7 @@ function fillForm(ev) {
   document.getElementById('fMenuOptions').value = (ev.menuOptions || []).join('\n');
   document.getElementById('fSuccessTitle').value = ev.successTitle || '';
   document.getElementById('fSuccessText').value = ev.successText || '';
+  document.getElementById('fNeedsLineCta').checked = !!ev.needsLineCta;
   document.getElementById('fPublished').checked = !!ev.published;
 }
 
@@ -290,6 +296,7 @@ document.getElementById('saveEventBtn').onclick = async () => {
     menuOptions,
     successTitle: document.getElementById('fSuccessTitle').value.trim(),
     successText: document.getElementById('fSuccessText').value,
+    needsLineCta: document.getElementById('fNeedsLineCta').checked,
     published: document.getElementById('fPublished').checked
   };
 
