@@ -118,6 +118,9 @@
       <input type="text" id="fSuccessTitle">
       <label>送信後：お礼メッセージの本文(改行OK)</label>
       <textarea id="fSuccessText"></textarea>
+      <label>キャンセルポリシー(任意)</label>
+      <div class="settings-hint">入力すると申込フォームに表示され、「同意する」チェックがないと送信できなくなります。空欄のままなら表示されません。</div>
+      <textarea id="fCancelPolicy" style="min-height:100px;"></textarea>
       <div class="toggle-row">
         <input type="checkbox" id="fNeedsLineCta">
         <label style="margin:0;">公式LINE誘導・カルテ案内を表示する(施術系イベント用。ワークショップ系はオフ推奨)</label>
@@ -272,6 +275,7 @@ function fillForm(ev) {
   document.getElementById('fMenuOptions').value = (ev.menuOptions || []).join('\n');
   document.getElementById('fSuccessTitle').value = ev.successTitle || '';
   document.getElementById('fSuccessText').value = ev.successText || '';
+  document.getElementById('fCancelPolicy').value = ev.cancelPolicy || '';
   document.getElementById('fNeedsLineCta').checked = !!ev.needsLineCta;
   document.getElementById('fPublished').checked = !!ev.published;
 }
@@ -296,6 +300,7 @@ document.getElementById('saveEventBtn').onclick = async () => {
     menuOptions,
     successTitle: document.getElementById('fSuccessTitle').value.trim(),
     successText: document.getElementById('fSuccessText').value,
+    cancelPolicy: document.getElementById('fCancelPolicy').value.trim(),
     needsLineCta: document.getElementById('fNeedsLineCta').checked,
     published: document.getElementById('fPublished').checked
   };
