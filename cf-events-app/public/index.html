@@ -44,6 +44,11 @@
   .line-note { font-size:12px; color:#6b5f54; line-height:1.9; margin:14px 0 0; text-align:left; }
   .mail-link { color:var(--terracotta-dark); word-break:break-all; }
   .error-msg { color:var(--terracotta-dark); font-size:13px; margin-top:8px; display:none; }
+  .cancel-policy-box { margin-top:20px; padding:16px; border-radius:14px; background:#FFF5EC; border:1px solid #F5DFC5; }
+  .cancel-policy-title { font-size:13px; font-weight:700; color:#B87A3E; margin-bottom:8px; }
+  .cancel-policy-text { font-size:13px; color:#7a6248; line-height:1.9; white-space:pre-line; margin:0 0 12px; }
+  .cancel-agree-row { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#5A4A4E; cursor:pointer; }
+  .cancel-agree-row input { width:auto; margin-top:2px; }
   .back-link { font-size:12px; color:#b6a998; text-decoration:underline; background:none; border:none; cursor:pointer; margin-top:14px; }
   .picker-item { display:block; width:100%; text-align:left; padding:18px 16px; border-radius:16px; border:1.5px solid #FBDDE3; background:#fff; margin-bottom:12px; cursor:pointer; border-left:5px solid var(--terracotta); box-shadow:0 3px 12px rgba(232,138,156,.10); transition:transform .1s; }
   .picker-item .name { font-family:'M PLUS Rounded 1c',sans-serif; font-size:17px; color:#7A5560; font-weight:700; }
@@ -88,6 +93,14 @@
         </div>
         <label>ご相談内容・お身体の気になる点(任意)</label>
         <textarea id="note" placeholder="例）産後の骨盤まわり、古傷のケアについて相談したい　など"></textarea>
+        <div id="cancelPolicyBox" class="cancel-policy-box" style="display:none;">
+          <div class="cancel-policy-title">キャンセルポリシー</div>
+          <p class="cancel-policy-text" id="cancelPolicyText"></p>
+          <label class="cancel-agree-row">
+            <input type="checkbox" id="cancelAgree">
+            上記キャンセルポリシーに同意します<span class="req">必須</span>
+          </label>
+        </div>
         <button type="submit" class="submit" id="submitBtn">申し込む</button>
         <div class="error-msg" id="errorMsg">送信に失敗しました。もう一度お試しください。</div>
       </form>
@@ -198,6 +211,16 @@ async function openForm(ev) {
   }
 
   document.getElementById('entryForm').reset();
+
+  const cancelBox = document.getElementById('cancelPolicyBox');
+  if (ev.cancelPolicy) {
+    document.getElementById('cancelPolicyText').textContent = ev.cancelPolicy;
+    cancelBox.style.display = 'block';
+  } else {
+    cancelBox.style.display = 'none';
+  }
+  document.getElementById('cancelAgree').checked = false;
+
   showScreen('formScreen');
 }
 
@@ -212,6 +235,14 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
   const btn = document.getElementById('submitBtn');
   const errorMsg = document.getElementById('errorMsg');
   errorMsg.style.display = 'none';
+
+  const cancelBox = document.getElementById('cancelPolicyBox');
+  if (cancelBox.style.display !== 'none' && !document.getElementById('cancelAgree').checked) {
+    errorMsg.textContent = 'キャンセルポリシーへの同意が必要です。';
+    errorMsg.style.display = 'block';
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = '送信中...';
 
@@ -245,6 +276,7 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
     showScreen('successScreen');
   } catch (err) {
     console.error(err);
+    errorMsg.textContent = '送信に失敗しました。もう一度お試しください。';
     errorMsg.style.display = 'block';
     btn.disabled = false;
     btn.textContent = '申し込む';
