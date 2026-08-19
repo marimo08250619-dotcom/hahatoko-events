@@ -38,6 +38,9 @@
   .success h2 { font-family:'M PLUS Rounded 1c',sans-serif; font-size:20px; margin:4px 0 10px; }
   .success p { font-size:14px; color:#6b5f54; line-height:1.8; white-space:pre-line; }
   .line-cta-box { margin-top:28px; padding:24px 20px; border-radius:14px; background:#EAFBF0; border:1px solid #B8ECC8; text-align:center; }
+  .payment-box { margin-top:28px; padding:20px; border-radius:14px; background:var(--cream-2); border:1px solid #FBDDE3; text-align:left; }
+  .payment-title { font-size:14px; font-weight:700; color:#7A5560; margin-bottom:10px; text-align:center; }
+  .payment-text { font-size:14px; color:#5A4A4E; line-height:2; white-space:pre-line; margin:0; }
   .line-cta-title { font-size:15px; font-weight:700; margin-bottom:14px; }
   .line-btn { display:inline-block; padding:14px 28px; border-radius:12px; background:#06C755; color:#fff; font-size:15px; font-weight:700; text-decoration:none; }
   .line-url { display:block; margin-top:10px; font-size:13px; color:#06C755; word-break:break-all; text-decoration:underline; }
@@ -113,6 +116,11 @@
     <h2 id="successTitleEl"></h2>
     <p id="successTextEl"></p>
 
+    <div class="payment-box" id="paymentBox" style="display:none;">
+      <div class="payment-title">お振込先</div>
+      <p class="payment-text" id="paymentText"></p>
+    </div>
+
     <div class="line-cta-box" id="lineCtaBox" style="display:none;">
       <div class="line-cta-title">まずは公式LINEを友だち追加してください</div>
       <a href="https://lin.ee/uvEFu3u" target="_blank" rel="noopener" class="line-btn">
@@ -122,13 +130,30 @@
       <p class="line-note">追加後に届くメッセージの中に、<b>事前カルテ記入用のURL</b>がございますので、そちらからご記入をお願いいたします。<br><br>※LINEのご登録だけでは、どなたのお申し込みか分からないため、追加後に<b>お申し込み時のお名前</b>を一言お送りいただけますようお願いいたします🙇‍♀️<br><br>※万が一、カルテ記入用のURLが届かない場合は、お名前をお送りいただく際に「URLが届いていません」と一言添えていただけますと幸いです。<br><br>※もし公式LINEにご登録いただけなかった場合は、お手数ですが下記メールまでご連絡ください。<br><a href="mailto:marimo08250619@gmail.com" class="mail-link">marimo08250619@gmail.com</a></p>
     </div>
   </div>
+  <div id="policyScreen" class="screen">
+    <header>
+      <div class="eyebrow">ご予約者様へ</div>
+      <h1 id="policyTitleEl"></h1>
+    </header>
+    <div class="card">
+      <div id="policyCancelBox" class="cancel-policy-box" style="display:none;">
+        <div class="cancel-policy-title">キャンセルポリシー</div>
+        <p class="cancel-policy-text" id="policyCancelText"></p>
+      </div>
+      <div id="policyPaymentBox" class="payment-box" style="display:none; margin-top:16px;">
+        <div class="payment-title">お振込先</div>
+        <p class="payment-text" id="policyPaymentText"></p>
+      </div>
+      <p id="policyEmptyNote" class="empty-note" style="display:none;">現在、表示できる情報はありません。</p>
+    </div>
+  </div>
 
 </div>
 
 <script>
 let currentEvent = null;
 
-const screens = ['pickerScreen','formScreen','successScreen']
+const screens = ['pickerScreen','formScreen','successScreen','policyScreen']
   .reduce((acc, id) => { acc[id] = document.getElementById(id); return acc; }, {});
 
 function showScreen(id) {
@@ -272,6 +297,13 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
 
     document.getElementById('successTitleEl').textContent = currentEvent.successTitle;
     document.getElementById('successTextEl').textContent = currentEvent.successText;
+    const paymentBox = document.getElementById('paymentBox');
+    if (currentEvent.paymentInfo) {
+      document.getElementById('paymentText').textContent = currentEvent.paymentInfo;
+      paymentBox.style.display = 'block';
+    } else {
+      paymentBox.style.display = 'none';
+    }
     document.getElementById('lineCtaBox').style.display = currentEvent.needsLineCta ? 'block' : 'none';
     showScreen('successScreen');
   } catch (err) {
@@ -285,6 +317,18 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
 
 async function init() {
   const params = new URLSearchParams(window.location.search);
+  const policyEventId = params.get('policy');
+  if (policyEventId) {
+    try {
+      const events = await loadPublicEvents();
+      const ev = events.find(e => e.id === policyEventId);
+      if (ev) {
+        showPolicyScreen(ev);
+        return;
+      }
+    } catch (e) { /* 取得に失敗したら通常の一覧表示にフォールバック */ }
+  }
+
   const targetEventId = params.get('event');
   if (targetEventId) {
     try {
@@ -297,6 +341,36 @@ async function init() {
     } catch (e) { /* 取得に失敗したら通常の一覧表示にフォールバック */ }
   }
   renderPicker();
+}
+
+function showPolicyScreen(ev) {
+  document.getElementById('policyTitleEl').textContent = ev.title;
+
+  const cancelBox = document.getElementById('policyCancelBox');
+  const paymentBox = document.getElementById('policyPaymentBox');
+  const emptyNote = document.getElementById('policyEmptyNote');
+
+  let hasContent = false;
+
+  if (ev.cancelPolicy) {
+    document.getElementById('policyCancelText').textContent = ev.cancelPolicy;
+    cancelBox.style.display = 'block';
+    hasContent = true;
+  } else {
+    cancelBox.style.display = 'none';
+  }
+
+  if (ev.paymentInfo) {
+    document.getElementById('policyPaymentText').textContent = ev.paymentInfo;
+    paymentBox.style.display = 'block';
+    hasContent = true;
+  } else {
+    paymentBox.style.display = 'none';
+  }
+
+  emptyNote.style.display = hasContent ? 'none' : 'block';
+
+  showScreen('policyScreen');
 }
 
 init();
