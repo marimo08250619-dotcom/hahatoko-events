@@ -121,6 +121,9 @@
       <label>キャンセルポリシー(任意)</label>
       <div class="settings-hint">入力すると申込フォームに表示され、「同意する」チェックがないと送信できなくなります。空欄のままなら表示されません。</div>
       <textarea id="fCancelPolicy" style="min-height:100px;"></textarea>
+      <label>お振込先情報(任意)</label>
+      <div class="settings-hint">入力すると、予約完了画面に表示されます。前払いが必要なイベントのみ入力してください。</div>
+      <textarea id="fPaymentInfo" style="min-height:100px;"></textarea>
       <div class="toggle-row">
         <input type="checkbox" id="fNeedsLineCta">
         <label style="margin:0;">公式LINE誘導・カルテ案内を表示する(施術系イベント用。ワークショップ系はオフ推奨)</label>
@@ -208,11 +211,16 @@ async function renderEventList() {
       <div class="row-actions">
         <button class="small-btn" data-act="edit" data-id="${ev.id}">編集</button>
         <button class="small-btn" data-act="link" data-id="${ev.id}">リンク取得</button>
+        <button class="small-btn" data-act="policylink" data-id="${ev.id}">ポリシー確認用リンク</button>
         <button class="small-btn danger" data-act="delete" data-id="${ev.id}">削除</button>
       </div>
       <div class="link-box" id="linkbox-${ev.id}" style="display:none;">
         <input type="text" readonly id="linkinput-${ev.id}">
         <button class="small-btn" data-act="copylink" data-id="${ev.id}">コピー</button>
+      </div>
+      <div class="link-box" id="policylinkbox-${ev.id}" style="display:none;">
+        <input type="text" readonly id="policylinkinput-${ev.id}">
+        <button class="small-btn" data-act="copypolicylink" data-id="${ev.id}">コピー</button>
       </div>
     `;
     wrap.appendChild(row);
@@ -236,6 +244,16 @@ async function renderEventList() {
         box.style.display = box.style.display === 'none' ? 'flex' : 'none';
       } else if (act === 'copylink') {
         const input = document.getElementById('linkinput-' + id);
+        input.select();
+        try { await navigator.clipboard.writeText(input.value); alert('コピーしました'); }
+        catch (e) { alert('手動で選択してコピーしてください'); }
+      } else if (act === 'policylink') {
+        const box = document.getElementById('policylinkbox-' + id);
+        const input = document.getElementById('policylinkinput-' + id);
+        input.value = window.location.origin + '/?policy=' + encodeURIComponent(id);
+        box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+      } else if (act === 'copypolicylink') {
+        const input = document.getElementById('policylinkinput-' + id);
         input.select();
         try { await navigator.clipboard.writeText(input.value); alert('コピーしました'); }
         catch (e) { alert('手動で選択してコピーしてください'); }
@@ -276,6 +294,7 @@ function fillForm(ev) {
   document.getElementById('fSuccessTitle').value = ev.successTitle || '';
   document.getElementById('fSuccessText').value = ev.successText || '';
   document.getElementById('fCancelPolicy').value = ev.cancelPolicy || '';
+  document.getElementById('fPaymentInfo').value = ev.paymentInfo || '';
   document.getElementById('fNeedsLineCta').checked = !!ev.needsLineCta;
   document.getElementById('fPublished').checked = !!ev.published;
 }
@@ -301,6 +320,7 @@ document.getElementById('saveEventBtn').onclick = async () => {
     successTitle: document.getElementById('fSuccessTitle').value.trim(),
     successText: document.getElementById('fSuccessText').value,
     cancelPolicy: document.getElementById('fCancelPolicy').value.trim(),
+    paymentInfo: document.getElementById('fPaymentInfo').value.trim(),
     needsLineCta: document.getElementById('fNeedsLineCta').checked,
     published: document.getElementById('fPublished').checked
   };
