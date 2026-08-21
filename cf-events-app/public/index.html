@@ -26,6 +26,7 @@
   input[type=text], textarea { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-family:inherit; font-size:15px; color:var(--ink); }
   textarea { resize:vertical; min-height:70px; }
   input:focus, textarea:focus { outline:none; border-color:var(--sage); background:#fff; }
+  .field-hint { font-size:12px; color:#a5828b; margin:2px 0 8px; }
   .time-options { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
   .time-option { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-size:14px; cursor:pointer; }
   .time-option.taken { opacity:.5; cursor:not-allowed; }
@@ -88,6 +89,9 @@
         <input type="text" id="name" required placeholder="例）山田 花子">
         <label>ご連絡先(電話番号 または LINE ID)<span class="req">必須</span></label>
         <input type="text" id="contact" required placeholder="例）090-xxxx-xxxx">
+        <label>メールアドレス<span class="req">必須</span></label>
+        <div class="field-hint">ご予約日が近づいた際のリマインドをお送りするために使用します。</div>
+        <input type="text" id="email" required placeholder="例）example@mail.com">
         <label>ご希望の時間帯<span class="req">必須</span></label>
         <div class="time-options" id="timeOptionsEl"></div>
         <div id="menuFieldWrap" style="display:none;">
@@ -273,6 +277,7 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
 
   const name = document.getElementById('name').value.trim();
   const contact = document.getElementById('contact').value.trim();
+  const email = document.getElementById('email').value.trim();
   const note = document.getElementById('note').value.trim();
   const timeslotEl = document.querySelector('input[name=timeslot]:checked');
   const timeslot = timeslotEl ? timeslotEl.value : '';
@@ -283,7 +288,7 @@ document.getElementById('entryForm').addEventListener('submit', async (e) => {
     const res = await fetch('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId: currentEvent.id, name, contact, timeslot, menu, note })
+      body: JSON.stringify({ eventId: currentEvent.id, name, contact, email, timeslot, menu, note })
     });
     if (res.status === 409) {
       errorMsg.textContent = 'その時間帯は直前に埋まってしまいました。お手数ですが別の時間帯をお選びください。';
