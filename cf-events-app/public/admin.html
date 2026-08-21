@@ -16,7 +16,7 @@
   label { display:block; font-size:13px; font-weight:500; margin:18px 0 6px; }
   label:first-child { margin-top:0; }
   .req { color:var(--terracotta); margin-left:4px; }
-  input[type=text], textarea, select { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-family:inherit; font-size:15px; color:var(--ink); }
+  input[type=text], input[type=date], input[type=email], textarea, select { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #E3D8C8; background:var(--cream-2); font-family:inherit; font-size:15px; color:var(--ink); }
   textarea { resize:vertical; min-height:70px; }
   input:focus, textarea:focus, select:focus { outline:none; border-color:var(--sage); background:#fff; }
   .pass-box { display:flex; gap:8px; margin-top:14px; }
@@ -46,12 +46,14 @@
   th, td { padding:9px 8px; border-bottom:1px solid #F0E7DA; text-align:left; vertical-align:top; }
   th { background:var(--cream-2); font-weight:500; color:var(--terracotta-dark); }
   select.status { padding:5px 6px; border-radius:6px; border:1px solid #E3D8C8; font-size:12px; background:var(--cream-2); }
+  input.email-edit { padding:5px 6px; border-radius:6px; border:1px solid #E3D8C8; font-size:12px; background:var(--cream-2); width:140px; }
   .admin-count { font-size:13px; margin:10px 0; color:#6b5f54; }
   .save-note { font-size:12px; color:var(--sage-dark); margin-top:10px; display:none; }
   .settings-hint { font-size:12px; color:#b6a998; margin:4px 0 2px; }
   .toggle-row { display:flex; align-items:center; gap:8px; margin:18px 0 6px; }
   .toggle-row input { width:auto; }
   .del-entry-btn { font-size:11px; padding:5px 8px; border-radius:6px; border:1px solid var(--terracotta); background:#fff; color:var(--terracotta-dark); cursor:pointer; }
+  .reminder-tags { font-size:10px; color:#8a7c6c; margin-top:2px; }
 </style>
 </head>
 <body>
@@ -87,7 +89,7 @@
         <div class="admin-count" id="adminCount"></div>
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>お名前</th><th>連絡先</th><th>時間帯</th><th>メニュー</th><th>相談内容</th><th>受付日時</th><th>状況</th><th>削除</th></tr></thead>
+            <thead><tr><th>お名前</th><th>連絡先</th><th>メール</th><th>時間帯</th><th>メニュー</th><th>相談内容</th><th>受付日時</th><th>状況</th><th>削除</th></tr></thead>
             <tbody id="adminTbody"></tbody>
           </table>
         </div>
@@ -104,8 +106,11 @@
       <input type="text" id="fTitle">
       <label>紹介文(改行OK)</label>
       <textarea id="fIntro"></textarea>
-      <label>日程表示</label>
+      <label>日程表示(お客様向けの表示テキスト)</label>
       <input type="text" id="fDateLine">
+      <label>イベント実施日(リマインド計算用)</label>
+      <div class="settings-hint">この日付をもとに、1ヶ月前・2週間前・前日にリマインドメールが自動送信されます。複数日にまたがるイベントの場合は最初の日を入力してください。</div>
+      <input type="date" id="fDate">
       <label>会場表示</label>
       <input type="text" id="fVenueLine">
       <label>時間帯の選択肢(1行に1つ)</label>
@@ -122,7 +127,7 @@
       <div class="settings-hint">入力すると申込フォームに表示され、「同意する」チェックがないと送信できなくなります。空欄のままなら表示されません。</div>
       <textarea id="fCancelPolicy" style="min-height:100px;"></textarea>
       <label>お振込先情報(任意)</label>
-      <div class="settings-hint">入力すると、予約完了画面に表示されます。前払いが必要なイベントのみ入力してください。</div>
+      <div class="settings-hint">入力すると、予約完了画面に表示されます。前払いが必要なイベントのみ入力してください。キャンセルポリシー・実施日とあわせて入力すると、自動リマインドメールの対象になります。</div>
       <textarea id="fPaymentInfo" style="min-height:100px;"></textarea>
       <div class="toggle-row">
         <input type="checkbox" id="fNeedsLineCta">
@@ -203,11 +208,13 @@ async function renderEventList() {
     return;
   }
   events.forEach(ev => {
+    const reminderReady = ev.cancelPolicy && ev.paymentInfo && ev.date;
     const row = document.createElement('div');
     row.className = 'event-row';
     row.innerHTML = `
       <div class="name">${escapeHtml(ev.title)}<span class="badge ${ev.published?'published':'hidden'}">${ev.published?'公開中':'非公開'}</span></div>
-      <div class="meta">${escapeHtml(ev.dateLine)}</div>
+      <div class="meta">${escapeHtml(ev.dateLine)}${ev.date ? ' / 実施日:' + escapeHtml(ev.date) : ''}</div>
+      <div class="meta">${reminderReady ? '✅ 自動リマインド対象' : '— リマインド未設定(実施日・キャンセルポリシー・振込先すべて入力で有効)'}</div>
       <div class="row-actions">
         <button class="small-btn" data-act="edit" data-id="${ev.id}">編集</button>
         <button class="small-btn" data-act="link" data-id="${ev.id}">リンク取得</button>
@@ -273,7 +280,7 @@ async function openEdit(id) {
     fillForm(events.find(e => e.id === id) || {});
   } else {
     fillForm({
-      eyebrow: '出張施術会 お申し込み', title: '', intro: '', dateLine: '', venueLine: '',
+      eyebrow: '出張施術会 お申し込み', title: '', intro: '', dateLine: '', date: '', venueLine: '',
       timeslots: ['午前(10:00-12:00)', '午後(13:00-16:00)'],
       successTitle: 'お申し込みありがとうございます',
       successText: '内容を確認のうえ、ご連絡先へ折り返しご連絡いたします。',
@@ -288,6 +295,7 @@ function fillForm(ev) {
   document.getElementById('fTitle').value = ev.title || '';
   document.getElementById('fIntro').value = ev.intro || '';
   document.getElementById('fDateLine').value = ev.dateLine || '';
+  document.getElementById('fDate').value = ev.date || '';
   document.getElementById('fVenueLine').value = ev.venueLine || '';
   document.getElementById('fTimeslots').value = (ev.timeslots || []).join('\n');
   document.getElementById('fMenuOptions').value = (ev.menuOptions || []).join('\n');
@@ -314,6 +322,7 @@ document.getElementById('saveEventBtn').onclick = async () => {
     title,
     intro: document.getElementById('fIntro').value,
     dateLine: document.getElementById('fDateLine').value.trim(),
+    date: document.getElementById('fDate').value || '',
     venueLine: document.getElementById('fVenueLine').value.trim(),
     timeslots,
     menuOptions,
@@ -376,9 +385,14 @@ async function renderEntryTable() {
     const timeslotOptionsHtml = timeslotOptions.map(t =>
       `<option value="${escapeHtml(t)}" ${entry.timeslot===t?'selected':''}>${escapeHtml(t)}</option>`
     ).join('') + (timeslotOptions.includes(entry.timeslot) ? '' : `<option value="${escapeHtml(entry.timeslot)}" selected>${escapeHtml(entry.timeslot)}(選択肢外)</option>`);
+    const remindersSent = entry.remindersSent || [];
     tr.innerHTML = `
       <td>${escapeHtml(entry.name)}</td>
       <td>${escapeHtml(entry.contact)}</td>
+      <td>
+        <input type="email" class="email-edit" data-id="${entry.id}" value="${escapeHtml(entry.email || '')}" placeholder="未入力">
+        ${remindersSent.length ? `<div class="reminder-tags">送信済:${remindersSent.map(escapeHtml).join('・')}</div>` : ''}
+      </td>
       <td>
         <select class="status timeslot-edit" data-id="${entry.id}">${timeslotOptionsHtml}</select>
       </td>
@@ -413,6 +427,11 @@ async function renderEntryTable() {
       }
       if (!res2.ok) { alert('変更に失敗しました'); renderEntryTable(); return; }
       renderEntryTable();
+    });
+  });
+  tbody.querySelectorAll('.email-edit').forEach(inp => {
+    inp.addEventListener('change', async (e) => {
+      await fetch('/api/entries', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ id: e.target.getAttribute('data-id'), email: e.target.value.trim() }) });
     });
   });
   tbody.querySelectorAll('.del-entry-btn').forEach(btn => {
