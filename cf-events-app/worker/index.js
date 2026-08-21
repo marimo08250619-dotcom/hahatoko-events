@@ -42,14 +42,59 @@ async function notifyLine(env, entry, eventTitle) {
   }
 }
 
-// ── 追加: リマインドメール送信(Resend経由) ──────────────────────
-async function sendReminderEmail(env, entry, ev, stageKey) {
+// ── 追加: Resend経由の共通メール送信処理 ──────────────────────
+async function sendViaResend(env, to, subject, text) {
   if (!env.RESEND_API_KEY || !env.FROM_EMAIL) {
     console.error('RESEND_API_KEY / FROM_EMAIL not configured');
     return false;
   }
-  if (!entry.email) return false;
+  if (!to) return false;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + env.RESEND_API_KEY
+      },
+      body: JSON.stringify({ from: env.FROM_EMAIL, to, subject, text })
+    });
+    if (!res.ok) {
+      console.error('Resend send failed', await res.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Resend send error', e);
+    return false;
+  }
+}
 
+// ── 追加: 予約完了時の確認メール ──────────────────────────────
+async function sendConfirmationEmail(env, entry, ev) {
+  const subject = `【${ev.title}】お申し込みを受け付けました`;
+  const bodyLines = [
+    `${entry.name} 様`,
+    ``,
+    `以下の内容でお申し込みを受け付けました。`,
+    ``,
+    `■ イベント: ${ev.title}`,
+    `■ 日時: ${ev.dateLine || ev.date}`,
+    `■ 時間帯: ${entry.timeslot}`,
+    ev.venueLine ? `■ 会場: ${ev.venueLine}` : '',
+    entry.menu ? `■ メニュー: ${entry.menu}` : '',
+    ``,
+    ev.cancelPolicy ? `【キャンセルポリシー】\n${ev.cancelPolicy}` : '',
+    ``,
+    ev.paymentInfo ? `【お振込先】\n${ev.paymentInfo}\n※前払いが必要な場合は、期日までにお手続きをお願いいたします。` : '',
+    ``,
+    `ご予約が近づきましたら、あらためてリマインドメールをお送りします。`,
+    `ご不明な点がございましたら、お気軽にお問い合わせください。`
+  ].filter(Boolean);
+  return sendViaResend(env, entry.email, subject, bodyLines.join('\n'));
+}
+
+// ── 追加: リマインドメール送信(Resend経由) ──────────────────────
+async function sendReminderEmail(env, entry, ev, stageKey) {
   const subject = `【${ev.title}】ご予約リマインド(${stageKey})`;
   const bodyLines = [
     `${entry.name} 様`,
@@ -67,30 +112,7 @@ async function sendReminderEmail(env, entry, ev, stageKey) {
     ``,
     `ご不明な点がございましたら、お気軽にお問い合わせください。`
   ].filter(Boolean);
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + env.RESEND_API_KEY
-      },
-      body: JSON.stringify({
-        from: env.FROM_EMAIL,
-        to: entry.email,
-        subject,
-        text: bodyLines.join('\n')
-      })
-    });
-    if (!res.ok) {
-      console.error('Resend send failed', await res.text());
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error('Resend send error', e);
-    return false;
-  }
+  return sendViaResend(env, entry.email, subject, bodyLines.join('\n'));
 }
 
 // ── 追加: 全イベント・全申込を走査してリマインドが必要なものを送信 ──
@@ -237,6 +259,7 @@ async function handleEntries(request, env) {
     const eventsList = eventsRaw ? JSON.parse(eventsRaw) : [];
     const ev = eventsList.find(e => e.id === body.eventId);
     await notifyLine(env, newEntry, ev ? ev.title : '(イベント名不明)');
+    if (ev) await sendConfirmationEmail(env, newEntry, ev); // 追加: 申込者への予約完了確認メール
 
     return json({ ok: true });
   }
