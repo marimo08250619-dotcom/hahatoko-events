@@ -87,7 +87,7 @@ async function sendConfirmationEmail(env, entry, ev) {
     ``,
     ev.paymentInfo ? `【お振込先】\n${ev.paymentInfo}\n※前払いが必要な場合は、期日までにお手続きをお願いいたします。` : '',
     ``,
-    `ご予約が近づきましたら、あらためてリマインドメールをお送りします。`,
+    `ご予約確定のご連絡は公式LINEにてお送りします。ご予約が近づきましたら、あらためてリマインドメールをお送りします。`,
     `ご不明な点がございましたら、お気軽にお問い合わせください。`
   ].filter(Boolean);
   return sendViaResend(env, entry.email, subject, bodyLines.join('\n'));
