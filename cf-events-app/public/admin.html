@@ -80,6 +80,8 @@
 
       <div class="admin-section active" id="eventsSection">
         <button class="primary-btn" id="newEventBtn">＋ 新しいイベントを追加</button>
+        <button class="small-btn" id="runRemindersBtn" style="margin-left:8px;">🔔 今すぐリマインドをテスト実行</button>
+        <div id="reminderRunNote" style="font-size:12px;color:#5A8060;margin-top:8px;display:none;"></div>
         <div id="eventListWrap" style="margin-top:16px;"></div>
       </div>
 
@@ -270,6 +272,27 @@ async function renderEventList() {
 }
 
 document.getElementById('newEventBtn').onclick = () => openEdit(null);
+
+document.getElementById('runRemindersBtn').onclick = async () => {
+  const btn = document.getElementById('runRemindersBtn');
+  const note = document.getElementById('reminderRunNote');
+  btn.disabled = true;
+  btn.textContent = '実行中...';
+  note.style.display = 'none';
+  try {
+    const res = await fetch('/api/run-reminders', { headers: authHeaders() });
+    if (!res.ok) throw new Error('failed');
+    note.textContent = '✅ リマインドチェックを実行しました。対象があればメールが送信されています。';
+    note.style.display = 'block';
+  } catch (e) {
+    note.textContent = '❌ 実行に失敗しました。時間をおいて再度お試しください。';
+    note.style.color = '#C76F7E';
+    note.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔔 今すぐリマインドをテスト実行';
+  }
+};
 
 async function openEdit(id) {
   editingEventId = id;
