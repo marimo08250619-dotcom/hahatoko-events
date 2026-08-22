@@ -71,11 +71,13 @@ async function sendViaResend(env, to, subject, text) {
 
 // ── 追加: 予約完了時の確認メール ──────────────────────────────
 async function sendConfirmationEmail(env, entry, ev) {
-  const subject = `【${ev.title}】お申し込みを受け付けました`;
+  const subject = `【${ev.title}】お申し込みを受け付けました(申込内容のご確認)`;
   const bodyLines = [
     `${entry.name} 様`,
     ``,
     `以下の内容でお申し込みを受け付けました。`,
+    `※こちらは「お申し込み受付」のご連絡です。まだご予約確定ではございません。`,
+    `内容を確認のうえ、登録いただいた公式LINEへ改めて確定のご連絡をいたしますので、今しばらくお待ちください。`,
     ``,
     `■ イベント: ${ev.title}`,
     `■ 日時: ${ev.dateLine || ev.date}`,
@@ -87,8 +89,10 @@ async function sendConfirmationEmail(env, entry, ev) {
     ``,
     ev.paymentInfo ? `【お振込先】\n${ev.paymentInfo}\n※前払いが必要な場合は、期日までにお手続きをお願いいたします。` : '',
     ``,
-    `ご予約確定のご連絡は公式LINEにてお送りします。ご予約が近づきましたら、あらためてリマインドメールをお送りします。`,
-    `ご不明な点がございましたら、お気軽にお問い合わせください。`
+    `ご予約確定のご連絡は公式LINEにてお送りします。ご予約日が近づきましたら、あらためてリマインドメールもお送りします。`,
+    `ご不明な点がございましたら、公式LINEよりお気軽にお問い合わせください。`,
+    ``,
+    `※このメールは自動送信のため、こちらに直接ご返信いただいても届きません。`
   ].filter(Boolean);
   return sendViaResend(env, entry.email, subject, bodyLines.join('\n'));
 }
@@ -110,7 +114,9 @@ async function sendReminderEmail(env, entry, ev, stageKey) {
     ``,
     ev.paymentInfo ? `【お振込先】\n${ev.paymentInfo}\n※前払いのお手続きがお済みでない場合は、期日までにお願いいたします。` : '',
     ``,
-    `ご不明な点がございましたら、お気軽にお問い合わせください。`
+    `ご不明な点がございましたら、公式LINEよりお気軽にお問い合わせください。`,
+    ``,
+    `※このメールは自動送信のため、こちらに直接ご返信いただいても届きません。`
   ].filter(Boolean);
   return sendViaResend(env, entry.email, subject, bodyLines.join('\n'));
 }
